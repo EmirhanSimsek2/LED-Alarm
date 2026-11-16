@@ -1,4 +1,4 @@
-// LED Alarm 2 - ESP32-C3 Super Mini
+// LED Alarm - ESP32-C3 Super Mini
 // Turns an LED panel on with a relay at alarm time.
 // Control: physical button + phone (ESP32 creates its own WiFi network).
 
@@ -298,7 +298,7 @@ void setup() {
 
   Serial.begin(115200);
   delay(1500);  // give the USB serial time to connect
-  Serial.println("\n=== LED Alarm 2 ===");
+  Serial.println("\n=== LED Alarm ===");
 
   setenv("TZ", "UTC0", 1);  // we store local time directly, no time zone math
   tzset();

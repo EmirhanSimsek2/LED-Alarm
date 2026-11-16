@@ -1,4 +1,4 @@
-# LED Alarm 2
+# LED Alarm
 
 ESP32-C3 Super Mini based wake-up light. An LED panel above the bed is switched by a relay at alarm time.
 

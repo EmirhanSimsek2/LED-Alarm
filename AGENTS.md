@@ -18,7 +18,7 @@
 ## Current Status (as of last session)
 
 - **Done:**
-  - PlatformIO project initialized in `C:\Projects\LED-Alarm-2` and pushed to GitHub (`main`).
+  - PlatformIO project initialized in `C:\Projects\LED-Alarm` and pushed to GitHub (`main`).
   - v1 firmware written, compiled, and uploaded to ESP32-C3 (`COM3`).
   - Phone WiFi AP (`LED-Alarm`, `http://192.168.4.1`) and panel toggle tested using the on-board blue LED (GPIO 8).
 - **Next Steps:**
