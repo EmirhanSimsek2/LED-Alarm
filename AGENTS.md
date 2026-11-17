@@ -19,9 +19,9 @@
 
 - **Done:**
   - PlatformIO project initialized in `C:\Projects\LED-Alarm` and pushed to GitHub (`main`).
-  - v1 firmware written, compiled, and uploaded to ESP32-C3 (`COM3`).
-  - Phone WiFi AP (`LED-Alarm`, `http://192.168.4.1`) and panel toggle tested using the on-board blue LED (GPIO 8).
+  - Hardware wired and soldered onto perfboard; DS1302 RTC verified (`valid=1 running=1 wp=0`) and retains time across power loss.
+  - Fixed ESP32-C3 USB CDC blocking delay (`Serial.setTxTimeoutMs(0)`) and web toggle race condition (`state:'toggle'`, non-overlapping `refresh()`).
+  - v2 firmware compiled and uploaded to ESP32-C3 (`COM3`): configurable `alarmMin`, `snoozeMin`, `manualOffMin` (saved in `Preferences`), next-alarm display, `Copy Mon -> Fri`, `Disable all`, collapsible manual date/time sync, and `no-store` headers.
 - **Next Steps:**
-  1. Remove the relay module from its old project and test if it triggers with 3.3V (`RELAY_ACTIVE_HIGH = true` in `include/config.h`).
-  2. Wire DS1302, button, and relay on a breadboard and test all features (time sync, RTC persistence, button single/double press, 3-min auto-off, 5-min snooze).
-  3. Solder low-voltage parts onto perfboard and enclose the 220V relay terminals safely.
+  1. Safely connect and enclose the 220V AC relay terminals (`COM` and `NO`) inside an insulated enclosure.
+  2. Power from external 5V (with USB disconnected) and verify real-world LED panel switching.

@@ -15,7 +15,10 @@ constexpr uint8_t PIN_STATUS_LED = 8;   // On-board blue LED (active LOW), mirro
 constexpr bool RELAY_ACTIVE_HIGH = true;
 
 // ---------------- Timing ----------------
-constexpr uint32_t ALARM_DURATION_MS = 3UL * 60UL * 1000UL;  // auto-off after 3 min
-constexpr uint32_t SNOOZE_MS         = 5UL * 60UL * 1000UL;  // snooze 5 min
-constexpr uint32_t DOUBLE_PRESS_MS   = 500;                  // window for a double press
-constexpr uint32_t DEBOUNCE_MS       = 30;
+constexpr uint16_t DEFAULT_ALARM_MIN      = 3;    // auto-off after 3 min (0 = manual off)
+constexpr uint16_t DEFAULT_SNOOZE_MIN     = 5;    // snooze 5 min
+constexpr uint16_t DEFAULT_MANUAL_OFF_MIN = 0;    // manual panel auto-off (0 = disabled)
+constexpr uint16_t MAX_DURATION_MIN       = 180;  // max alarm / manual auto-off minutes
+constexpr uint16_t MAX_SNOOZE_MIN         = 60;   // max snooze minutes
+constexpr uint32_t DOUBLE_PRESS_MS        = 500;  // window for a double press
+constexpr uint32_t DEBOUNCE_MS            = 30;
