@@ -11,35 +11,76 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <title>LED Alarm</title>
 <style>
   *{box-sizing:border-box}
-  body{font-family:system-ui,-apple-system,sans-serif;background:#111;color:#eee;margin:0 auto;padding:16px;max-width:480px}
+  body{font-family:system-ui,-apple-system,sans-serif;background:#000;color:#fff;margin:0 auto;padding:16px;max-width:480px}
   h1{font-size:1.3em;margin:4px 0 14px}
-  h2{font-size:1.1em;margin:0 0 10px}
-  .card{background:#1e1e1e;border-radius:14px;padding:16px;margin-bottom:14px}
+  h2{font-size:1.1em;margin:0}
+  .card{background:#1c1c1e;border-radius:16px;padding:16px;margin-bottom:14px}
   #clock{font-size:2.6em;text-align:center;font-variant-numeric:tabular-nums}
-  #date,#nextAlarm{text-align:center;color:#aaa;font-size:.95em;margin-top:2px}
-  #nextAlarm{color:#90caf9;margin-top:6px}
-  .warn{color:#ff8a65;text-align:center;font-size:.9em;margin-top:6px}
-  .note{color:#aaa;text-align:center;font-size:.9em;margin-top:8px}
-  button{font-size:1em;padding:12px;border:0;border-radius:10px;width:100%;margin-top:8px;background:#333;color:#eee;cursor:pointer}
+  #date,#nextAlarm{text-align:center;color:#98989f;font-size:.95em;margin-top:2px}
+  #nextAlarm{color:#ff9f0a;margin-top:6px}
+  .warn{color:#ff6961;text-align:center;font-size:.9em;margin-top:6px}
+  .note{color:#98989f;text-align:center;font-size:.9em;margin-top:8px}
+  button{font-size:1em;padding:12px;border:0;border-radius:12px;width:100%;margin-top:8px;background:#2c2c2e;color:#fff;cursor:pointer}
   button:active{opacity:.7}
-  #panelBtn{font-size:1.3em;padding:20px;margin-top:0}
+  #panelBtn{font-size:1.25em;padding:18px;margin-top:0}
   #panelBtn.on{background:#f5c518;color:#111;font-weight:600}
-  #alarmBox{background:#3a2a00;border-radius:10px;padding:10px;margin-top:10px;text-align:center}
-  .row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid #2a2a2a;gap:10px}
+  #alarmBox{background:#3a2a00;border-radius:12px;padding:12px;margin-top:10px;text-align:center}
+  .row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #2c2c2e;gap:10px}
   .row:last-child{border-bottom:none}
-  .row label{display:flex;align-items:center;gap:10px;flex:1}
-  input[type=checkbox]{width:22px;height:22px}
-  input[type=time],input[type=date],input[type=number]{font-size:1em;padding:7px;background:#2a2a2a;color:#eee;border:1px solid #444;border-radius:8px}
+  .row label{flex:1}
+  input[type=time],input[type=date],input[type=number],input[type=text]{font-size:1em;padding:8px 10px;background:#2c2c2e;color:#fff;border:1px solid #3a3a3c;border-radius:10px}
   input[type=number]{width:84px;text-align:center}
-  .btn-row{display:flex;gap:8px;margin-top:6px}
-  .btn-row button{flex:1;font-size:.9em;padding:10px;background:#2a2a2a}
-  .danger{background:#5c2222 !important}
-  .primary{background:#1976d2}
-  .toast{text-align:center;color:#8bc34a;min-height:1.2em;margin-top:6px;font-size:.9em}
-  details{margin-top:10px;border-top:1px solid #2a2a2a;padding-top:8px}
-  summary{color:#aaa;font-size:.9em;cursor:pointer}
+  .primary{background:#0a84ff}
+  .danger{background:#3a1c1c;color:#ff453a}
+  .toast{text-align:center;color:#30d158;min-height:1.2em;margin-top:6px;font-size:.9em}
+  details{margin-top:10px;border-top:1px solid #2c2c2e;padding-top:8px}
+  summary{color:#98989f;font-size:.9em;cursor:pointer}
   .man-grid{display:flex;gap:8px;margin-top:8px}
   .man-grid input{flex:1}
+
+  /* iOS-style Alarm List */
+  .al-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .pill-btn{width:auto;margin:0;padding:6px 14px;border-radius:999px;background:#2c2c2e;color:#ff9f0a;font-size:.92em;font-weight:600}
+  .icon-btn{width:36px;height:36px;margin:0;padding:0;border-radius:50%;background:#2c2c2e;color:#ff9f0a;font-size:1.4em;line-height:36px;text-align:center}
+  .al-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #2c2c2e}
+  .al-item:last-child{border-bottom:none}
+  .al-del{width:28px;height:28px;margin:0;padding:0;border-radius:50%;background:#ff453a;color:#fff;font-size:1.1em;font-weight:700;flex-shrink:0}
+  .al-info{flex:1;cursor:pointer;min-width:0}
+  .al-time{font-size:2.3em;font-weight:300;line-height:1.05;font-variant-numeric:tabular-nums;color:#fff}
+  .al-item.off .al-time,.al-item.off .al-sub{color:#636366}
+  .al-sub{font-size:.88em;color:#98989f;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .empty{color:#636366;text-align:center;padding:18px 0;font-size:.95em}
+
+  /* iOS Toggle Switch */
+  .sw{position:relative;display:inline-block;width:51px;height:31px;flex-shrink:0}
+  .sw input{opacity:0;width:0;height:0}
+  .sl{position:absolute;cursor:pointer;inset:0;background:#39393d;border-radius:31px;transition:.2s}
+  .sl:before{content:"";position:absolute;height:27px;width:27px;left:2px;bottom:2px;background:#fff;border-radius:50%;transition:.2s}
+  .sw input:checked+.sl{background:#30d158}
+  .sw input:checked+.sl:before{transform:translateX(20px)}
+
+  /* Add / Edit Modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:flex-end;justify-content:center;z-index:50}
+  .modal-bg[hidden]{display:none}
+  .modal{background:#1c1c1e;width:100%;max-width:480px;border-radius:20px 20px 0 0;padding:16px 16px 24px;max-height:92vh;overflow-y:auto}
+  .m-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .m-title{font-weight:600;font-size:1.05em}
+  .m-x,.m-ok{width:38px;height:38px;margin:0;padding:0;border-radius:50%;font-size:1.15em;font-weight:700}
+  .m-x{background:#2c2c2e;color:#fff}
+  .m-ok{background:#ff9f0a;color:#000}
+  .m-time-wrap{display:flex;justify-content:center;margin:8px 0 16px}
+  #mTime{font-size:2.3em;padding:10px 18px;border-radius:14px;text-align:center;font-variant-numeric:tabular-nums}
+  .m-group{background:#2c2c2e;border-radius:14px;padding:12px 14px;margin-bottom:12px}
+  .m-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #3a3a3c;gap:10px}
+  .m-row:last-child{border-bottom:none;padding-bottom:0}
+  .m-row:first-child{padding-top:0}
+  .days-bar{display:flex;justify-content:space-between;gap:6px;margin-top:8px}
+  .day-btn{width:38px;height:38px;margin:0;padding:0;border-radius:50%;background:#3a3a3c;color:#fff;font-size:.88em;font-weight:600}
+  .day-btn.on{background:#ff9f0a;color:#000}
+  .presets{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .pre-btn{width:auto;margin:0;padding:5px 10px;border-radius:999px;background:#3a3a3c;color:#ddd;font-size:.8em}
+  #mLabel{flex:1;text-align:right;background:transparent;border:0;color:#ff9f0a;font-size:1em;padding:4px 0}
+  #mLabel:focus{outline:none}
 </style>
 </head>
 <body>
@@ -73,18 +114,17 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 </div>
 
 <div class="card">
-  <h2>Alarms</h2>
-  <div id="days"></div>
-  <div class="btn-row">
-    <button onclick="copyMonToFri()">Copy Mon &rarr; Fri</button>
-    <button class="danger" onclick="disableAll()">Disable all</button>
+  <div class="al-head">
+    <button class="pill-btn" id="editBtn" onclick="toggleEdit()">Edit</button>
+    <h2>Alarms</h2>
+    <button class="icon-btn" onclick="openModal(-1)" aria-label="Add alarm">+</button>
   </div>
-  <button class="primary" onclick="saveAlarms()">Save alarms</button>
+  <div id="alarmList"></div>
   <div id="saved" class="toast"></div>
 </div>
 
 <div class="card">
-  <h2>Settings</h2>
+  <h2 style="margin-bottom:8px">Settings</h2>
   <div class="row">
     <label for="alarmMin">Alarm duration (min, 0 = manual)</label>
     <input type="number" id="alarmMin" min="0" max="180">
@@ -101,17 +141,61 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
   <div id="cfgSaved" class="toast"></div>
 </div>
 
+<div id="modalBg" class="modal-bg" hidden onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="m-top">
+      <button class="m-x" onclick="closeModal()">&#10005;</button>
+      <div class="m-title" id="mTitle">Add Alarm</div>
+      <button class="m-ok" onclick="saveModal()">&#10003;</button>
+    </div>
+    <div class="m-time-wrap">
+      <input type="time" id="mTime" value="07:00">
+    </div>
+    <div class="m-group">
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span>Repeat</span>
+          <span id="mRepeatText" style="color:#ff9f0a;font-size:.9em">Once</span>
+        </div>
+        <div class="days-bar" id="mDaysBar"></div>
+        <div class="presets">
+          <button class="pre-btn" onclick="setMask(0)">Once</button>
+          <button class="pre-btn" onclick="setMask(62)">Weekdays</button>
+          <button class="pre-btn" onclick="setMask(65)">Weekends</button>
+          <button class="pre-btn" onclick="setMask(127)">Every day</button>
+        </div>
+      </div>
+      <div class="m-row" style="margin-top:10px;padding-top:10px;border-top:1px solid #3a3a3c">
+        <span>Label</span>
+        <input type="text" id="mLabel" maxlength="23" placeholder="Alarm">
+      </div>
+      <div class="m-row">
+        <span>Snooze</span>
+        <label class="sw">
+          <input type="checkbox" id="mSnooze" checked>
+          <span class="sl"></span>
+        </label>
+      </div>
+    </div>
+    <button id="mDelBtn" class="danger" onclick="deleteModalAlarm()" hidden>Delete Alarm</button>
+  </div>
+</div>
+
 <script>
 const NAMES=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const SHORT=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const ORDER=[1,2,3,4,5,6,0];
-let st=null, built=false, cfgBuilt=false, busy=false;
+const DAY_BITS=[1,2,3,4,5,6,0]; // Mon..Sun
+const DAY_LBL=['M','T','W','T','F','S','S'];
+
+let st=null, cfgBuilt=false, busy=false, editMode=false;
+let editId=-1, modalMask=0, lastAlarmKey='';
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,'0');
+const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 function toast(id,msg,ok=true){
   const el=$(id);
-  el.style.color=ok?'#8bc34a':'#ff8a65';
+  el.style.color=ok?'#30d158':'#ff6961';
   el.textContent=msg;
   setTimeout(()=>{ if(el.textContent===msg) el.textContent=''; },2500);
 }
@@ -121,15 +205,39 @@ function post(url,data){
     .then(r=>{refresh();return r;});
 }
 
-function buildDays(alarms){
-  let h='';
-  for(const d of ORDER){
-    const a=alarms[d];
-    h+=`<div class="row"><label><input type="checkbox" id="en${d}" ${a.en?'checked':''}>${NAMES[d]}</label>`+
-       `<input type="time" id="t${d}" value="${pad(a.h)}:${pad(a.m)}"></div>`;
+function maskText(mask){
+  if(mask===0) return 'Once';
+  if(mask===127) return 'Every day';
+  if(mask===62) return 'Weekdays';
+  if(mask===65) return 'Weekends';
+  const out=[];
+  for(const d of DAY_BITS) if(mask&(1<<d)) out.push(SHORT[d]);
+  return out.join(', ');
+}
+
+function renderAlarms(list){
+  const key=editMode+'|'+JSON.stringify(list);
+  if(key===lastAlarmKey) return;
+  lastAlarmKey=key;
+
+  if(!list||list.length===0){
+    $('alarmList').innerHTML='<div class="empty">No alarms yet. Tap + to add one.</div>';
+    return;
   }
-  $('days').innerHTML=h;
-  built=true;
+  const sorted=[...list].sort((a,b)=>(a.h*60+a.m)-(b.h*60+b.m));
+  let h='';
+  for(const a of sorted){
+    const sub=esc(a.lbl||'Alarm')+' &bull; '+maskText(a.days);
+    h+=`<div class="al-item ${a.en?'':'off'}">`+
+       (editMode?`<button class="al-del" onclick="delAlarm(${a.id})">&#8722;</button>`:'')+
+       `<div class="al-info" onclick="openModal(${a.id})">`+
+         `<div class="al-time">${pad(a.h)}:${pad(a.m)}</div>`+
+         `<div class="al-sub">${sub}</div>`+
+       `</div>`+
+       `<label class="sw"><input type="checkbox" ${a.en?'checked':''} onchange="toggleAlarm(${a.id},this.checked)"><span class="sl"></span></label>`+
+       `</div>`;
+  }
+  $('alarmList').innerHTML=h;
 }
 
 function formatNext(n){
@@ -137,7 +245,8 @@ function formatNext(n){
   let when=n.offset===0?'Today':(n.offset===1?'Tomorrow':SHORT[n.day]);
   const h=Math.floor(n.inMin/60), m=n.inMin%60;
   const rel=h>0?`${h}h ${m}m`:`${m}m`;
-  return `Next alarm: ${when} ${pad(n.h)}:${pad(n.m)} (in ${rel})`;
+  const lbl=n.lbl&&n.lbl!=='Alarm'?` (${n.lbl})`:'';
+  return `Next alarm: ${when} ${pad(n.h)}:${pad(n.m)}${lbl} \u2022 in ${rel}`;
 }
 
 function fmtSec(sec){ return Math.floor(sec/60)+':'+pad(sec%60); }
@@ -175,17 +284,20 @@ function refresh(){
     if(s.mode==='idle'){ $('alarmBox').hidden=true; }
     else{
       $('alarmBox').hidden=false;
-      $('snoozeBtn').textContent=`Snooze ${s.cfg.snoozeMin} min`;
+      const sb=$('snoozeBtn');
+      sb.hidden=!s.snoozable;
+      sb.textContent=`Snooze ${s.cfg.snoozeMin} min`;
+      const lbl=s.activeLbl?`${s.activeLbl} \u2014 `:'';
       if(s.mode==='ringing'){
         $('alarmText').textContent=s.cfg.alarmMin>0
-          ? 'Alarm ringing! Auto-off in '+fmtSec(s.remain)
-          : 'Alarm ringing! (manual off)';
+          ? lbl+'Alarm ringing! Auto-off in '+fmtSec(s.remain)
+          : lbl+'Alarm ringing! (manual off)';
       }else{
-        $('alarmText').textContent='Snoozed. Rings again in '+fmtSec(s.remain);
+        $('alarmText').textContent=lbl+'Snoozed. Rings again in '+fmtSec(s.remain);
       }
     }
 
-    if(!built) buildDays(s.alarms);
+    renderAlarms(s.alarms);
     if(!cfgBuilt&&s.cfg){
       $('alarmMin').value=s.cfg.alarmMin;
       $('snoozeMin').value=s.cfg.snoozeMin;
@@ -194,6 +306,79 @@ function refresh(){
     }
   }).catch(()=>{ $('warn').textContent='Connection lost...'; })
     .finally(()=>{ busy=false; });
+}
+
+function toggleEdit(){
+  editMode=!editMode;
+  $('editBtn').textContent=editMode?'Done':'Edit';
+  if(st) renderAlarms(st.alarms);
+}
+
+function toggleAlarm(id,en){
+  post('/api/alarm/toggle',{id,en:en?'1':'0'}).then(r=>{
+    if(!r.ok) toast('saved','Failed to update alarm',false);
+  });
+}
+
+function delAlarm(id){
+  post('/api/alarm/delete',{id}).then(r=>{
+    toast('saved',r.ok?'Alarm deleted':'Error!',r.ok);
+  });
+}
+
+function renderDaysBar(){
+  let h='';
+  DAY_BITS.forEach((bit,i)=>{
+    const on=(modalMask&(1<<bit))!==0;
+    h+=`<button type="button" class="day-btn ${on?'on':''}" onclick="toggleDay(${bit})">${DAY_LBL[i]}</button>`;
+  });
+  $('mDaysBar').innerHTML=h;
+  $('mRepeatText').textContent=maskText(modalMask);
+}
+
+function toggleDay(bit){ modalMask^=(1<<bit); renderDaysBar(); }
+function setMask(m){ modalMask=m; renderDaysBar(); }
+
+function openModal(id){
+  editId=id;
+  if(id<0){
+    $('mTitle').textContent='Add Alarm';
+    $('mTime').value='07:00';
+    $('mLabel').value='Alarm';
+    $('mSnooze').checked=true;
+    $('mDelBtn').hidden=true;
+    modalMask=0;
+  }else{
+    const a=st&&st.alarms?st.alarms.find(x=>x.id===id):null;
+    if(!a) return;
+    $('mTitle').textContent='Edit Alarm';
+    $('mTime').value=pad(a.h)+':'+pad(a.m);
+    $('mLabel').value=a.lbl||'Alarm';
+    $('mSnooze').checked=!!a.snz;
+    $('mDelBtn').hidden=false;
+    modalMask=a.days||0;
+  }
+  renderDaysBar();
+  $('modalBg').hidden=false;
+}
+
+function closeModal(){ $('modalBg').hidden=true; }
+
+function saveModal(){
+  const tm=$('mTime').value||'07:00';
+  const [h,m]=tm.split(':').map(Number);
+  const lbl=$('mLabel').value.trim()||'Alarm';
+  const snz=$('mSnooze').checked?'1':'0';
+  post('/api/alarm/save',{id:editId,en:'1',h,m,days:modalMask,snz,lbl}).then(r=>{
+    if(r.ok){ closeModal(); toast('saved','Alarm saved \u2713'); }
+    else r.text().then(t=>toast('saved',t||'Error!',false));
+  });
+}
+
+function deleteModalAlarm(){
+  if(editId<0) return;
+  closeModal();
+  delAlarm(editId);
 }
 
 function togglePanel(){ post('/api/panel',{state:'toggle'}); }
@@ -217,28 +402,6 @@ function setManualTime(){
   const [y,mo,da]=d.split('-').map(Number);
   const [h,mi]=t.split(':').map(Number);
   sendTime(y,mo,da,h,mi,0,'Manual time set \u2713');
-}
-
-function saveAlarms(msg='Saved \u2713'){
-  const data={};
-  for(let d=0;d<7;d++){
-    data['en'+d]=$('en'+d).checked?'1':'0';
-    data['t'+d]=$('t'+d).value||'07:00';
-  }
-  post('/api/alarms',data).then(r=>{
-    toast('saved',r.ok?msg:'Error!',r.ok);
-  });
-}
-
-function copyMonToFri(){
-  const t=$('t1').value||'07:00', en=$('en1').checked;
-  for(let d=2;d<=5;d++){ $('t'+d).value=t; $('en'+d).checked=en; }
-  saveAlarms('Copied Mon \u2192 Fri & saved \u2713');
-}
-
-function disableAll(){
-  for(let d=0;d<7;d++) $('en'+d).checked=false;
-  saveAlarms('All alarms disabled \u2713');
 }
 
 function saveSettings(){

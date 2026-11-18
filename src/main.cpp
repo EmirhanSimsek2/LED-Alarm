@@ -28,7 +28,17 @@ struct DayAlarm {
   uint8_t hour;
   uint8_t minute;
 };
-DayAlarm alarms[7];  // index = weekday, 0 = Sunday ... 6 = Saturday
+
+struct Alarm {
+  bool used;
+  bool enabled;
+  uint8_t hour;
+  uint8_t minute;
+  uint8_t daysMask;       // bit 0 = Sun ... bit 6 = Sat; 0 = one-shot (Never)
+  bool snoozeEnabled;
+  char label[ALARM_LABEL_LEN];
+};
+Alarm alarms[MAX_ALARMS];
 
 struct Settings {
   uint16_t alarmMin;
@@ -46,6 +56,8 @@ bool panelOn    = false;
 bool clockValid = false;  // do we know the current time?
 bool rtcOk      = false;  // is the DS1302 answering with sane values?
 long lastAlarmKey = -1;   // prevents the same alarm from firing twice in one minute
+bool activeAlarmSnoozable = true;
+char activeAlarmLabel[ALARM_LABEL_LEN] = "";
 
 // ====================== Panel (relay) ======================
 void setPanel(bool on) {
@@ -112,25 +124,61 @@ void printRtcDiag(const char *tag) {
 }
 
 // ====================== Alarm & Settings (flash) ======================
+void saveAlarms() {
+  prefs.begin("alarm", false);
+  prefs.putBytes("v2", alarms, sizeof(alarms));
+  prefs.end();
+}
+
 void loadAlarms() {
   prefs.begin("alarm", false);
-  size_t n = prefs.getBytes("days", alarms, sizeof(alarms));
+  size_t n = prefs.getBytes("v2", alarms, sizeof(alarms));
+  DayAlarm oldDays[7];
+  size_t oldN = (n != sizeof(alarms)) ? prefs.getBytes("days", oldDays, sizeof(oldDays)) : 0;
   cfg.alarmMin     = prefs.getUShort("alarmMin", DEFAULT_ALARM_MIN);
   cfg.snoozeMin    = prefs.getUShort("snoozeMin", DEFAULT_SNOOZE_MIN);
   cfg.manualOffMin = prefs.getUShort("manOffMin", DEFAULT_MANUAL_OFF_MIN);
   prefs.end();
-  if (n != sizeof(alarms)) {  // first boot: defaults
-    for (auto &a : alarms) a = {false, 7, 0};
+
+  if (n != sizeof(alarms)) {
+    memset(alarms, 0, sizeof(alarms));
+    // Migrate enabled alarms from legacy v1 per-weekday storage, grouped by HH:MM
+    if (oldN == sizeof(oldDays)) {
+      int count = 0;
+      for (int d = 0; d < 7; d++) {
+        if (!oldDays[d].enabled) continue;
+        int found = -1;
+        for (int i = 0; i < count; i++) {
+          if (alarms[i].hour == oldDays[d].hour && alarms[i].minute == oldDays[d].minute) {
+            found = i;
+            break;
+          }
+        }
+        if (found >= 0) {
+          alarms[found].daysMask |= (1 << d);
+        } else if (count < MAX_ALARMS) {
+          alarms[count].used = true;
+          alarms[count].enabled = true;
+          alarms[count].hour = oldDays[d].hour;
+          alarms[count].minute = oldDays[d].minute;
+          alarms[count].daysMask = (1 << d);
+          alarms[count].snoozeEnabled = true;
+          strlcpy(alarms[count].label, "Alarm", ALARM_LABEL_LEN);
+          count++;
+        }
+      }
+      saveAlarms();
+    }
+  } else {
+    for (auto &a : alarms) {
+      a.label[ALARM_LABEL_LEN - 1] = '\0';
+      if (a.hour > 23 || a.minute > 59) a.used = false;
+    }
   }
+
   if (cfg.alarmMin > MAX_DURATION_MIN)     cfg.alarmMin = DEFAULT_ALARM_MIN;
   if (cfg.snoozeMin < 1 || cfg.snoozeMin > MAX_SNOOZE_MIN) cfg.snoozeMin = DEFAULT_SNOOZE_MIN;
   if (cfg.manualOffMin > MAX_DURATION_MIN) cfg.manualOffMin = DEFAULT_MANUAL_OFF_MIN;
-}
-
-void saveAlarms() {
-  prefs.begin("alarm", false);
-  prefs.putBytes("days", alarms, sizeof(alarms));
-  prefs.end();
 }
 
 void saveSettings() {
@@ -154,14 +202,33 @@ void dismissAlarm() { Serial.println("[alarm] DISMISS"); setMode(Mode::Idle);   
 void checkAlarm() {
   struct tm t;
   if (!getLocalTm(t)) return;
-  const DayAlarm &a = alarms[t.tm_wday];
-  if (!a.enabled || t.tm_hour != a.hour || t.tm_min != a.minute) return;
 
   long key = (long)t.tm_yday * 1440 + t.tm_hour * 60 + t.tm_min;
   if (key == lastAlarmKey) return;
-  lastAlarmKey = key;
 
-  if (mode == Mode::Idle) startAlarm();
+  int matchIdx = -1;
+  uint8_t todayBit = (uint8_t)(1 << t.tm_wday);
+  for (int i = 0; i < MAX_ALARMS; i++) {
+    const Alarm &a = alarms[i];
+    if (!a.used || !a.enabled) continue;
+    if (a.hour != t.tm_hour || a.minute != t.tm_min) continue;
+    if (a.daysMask == 0 || (a.daysMask & todayBit)) {
+      matchIdx = i;
+      break;
+    }
+  }
+  if (matchIdx < 0) return;
+
+  lastAlarmKey = key;
+  Alarm &a = alarms[matchIdx];
+  activeAlarmSnoozable = a.snoozeEnabled;
+  strlcpy(activeAlarmLabel, a.label, sizeof(activeAlarmLabel));
+
+  if (a.daysMask == 0) {
+    a.enabled = false;  // one-shot alarm disables itself after firing
+    saveAlarms();
+  }
+  startAlarm();  // starts or overrides any currently ringing/snoozed alarm
 }
 
 void updateMode() {
@@ -192,7 +259,9 @@ uint32_t firstPressMs = 0;
 void onButtonPress() {
   switch (mode) {
     case Mode::Ringing:
-      if (pendingPress) {         // second press -> stop alarm completely
+      if (!activeAlarmSnoozable) {
+        dismissAlarm();
+      } else if (pendingPress) {  // second press -> stop alarm completely
         pendingPress = false;
         dismissAlarm();
       } else {                    // first press -> wait, maybe a double press
@@ -250,25 +319,62 @@ struct NextAlarmInfo {
   uint8_t h;
   uint8_t m;
   int inMin;
+  char label[ALARM_LABEL_LEN];
 };
 
 NextAlarmInfo findNextAlarm(const struct tm &t, bool valid) {
-  NextAlarmInfo info = {-1, 0, 0, 0, 0};
+  NextAlarmInfo info = {-1, 0, 0, 0, 0, ""};
   if (!valid) return info;
   int nowMin = t.tm_hour * 60 + t.tm_min;
-  for (int offset = 0; offset <= 7; offset++) {
-    int idx = (t.tm_wday + offset) % 7;
-    if (!alarms[idx].enabled) continue;
-    int alarmMin = alarms[idx].hour * 60 + alarms[idx].minute;
-    if (offset == 0 && alarmMin <= nowMin) continue;
-    info.day = idx;
-    info.offset = offset;
-    info.h = alarms[idx].hour;
-    info.m = alarms[idx].minute;
-    info.inMin = offset * 1440 + alarmMin - nowMin;
-    return info;
+  int bestInMin = 999999;
+
+  for (int i = 0; i < MAX_ALARMS; i++) {
+    const Alarm &a = alarms[i];
+    if (!a.used || !a.enabled) continue;
+    int alarmMin = a.hour * 60 + a.minute;
+
+    if (a.daysMask == 0) {
+      int offset = (alarmMin > nowMin) ? 0 : 1;
+      int inMin = offset * 1440 + alarmMin - nowMin;
+      if (inMin < bestInMin) {
+        bestInMin = inMin;
+        info.day = (t.tm_wday + offset) % 7;
+        info.offset = offset;
+        info.h = a.hour;
+        info.m = a.minute;
+        info.inMin = inMin;
+        strlcpy(info.label, a.label, sizeof(info.label));
+      }
+      continue;
+    }
+
+    for (int offset = 0; offset <= 7; offset++) {
+      int wday = (t.tm_wday + offset) % 7;
+      if (!(a.daysMask & (1 << wday))) continue;
+      if (offset == 0 && alarmMin <= nowMin) continue;
+      int inMin = offset * 1440 + alarmMin - nowMin;
+      if (inMin < bestInMin) {
+        bestInMin = inMin;
+        info.day = wday;
+        info.offset = offset;
+        info.h = a.hour;
+        info.m = a.minute;
+        info.inMin = inMin;
+        strlcpy(info.label, a.label, sizeof(info.label));
+      }
+      break;
+    }
   }
   return info;
+}
+
+void appendJsonStr(String &out, const char *s) {
+  out += '"';
+  for (const char *p = s; *p; p++) {
+    if (*p == '"' || *p == '\\') { out += '\\'; out += *p; }
+    else if ((uint8_t)*p >= 0x20) { out += *p; }
+  }
+  out += '"';
 }
 
 uint32_t remainingSec(uint32_t startMs, uint16_t minutes) {
@@ -297,7 +403,7 @@ void handleStatus() {
   NextAlarmInfo nxt = findNextAlarm(t, ok);
 
   String json;
-  json.reserve(640);
+  json.reserve(1536);
   json += "{\"time\":\"";   json += timeStr;
   json += "\",\"valid\":";  json += ok ? "true" : "false";
   json += ",\"rtc\":";      json += rtcOk ? "true" : "false";
@@ -305,6 +411,8 @@ void handleStatus() {
   json += ",\"panel\":";    json += panelOn ? "true" : "false";
   json += ",\"mode\":\"";   json += modeName();
   json += "\",\"remain\":"; json += remain;
+  json += ",\"snoozable\":"; json += activeAlarmSnoozable ? "true" : "false";
+  json += ",\"activeLbl\":"; appendJsonStr(json, activeAlarmLabel);
   json += ",\"cfg\":{\"alarmMin\":";   json += cfg.alarmMin;
   json += ",\"snoozeMin\":";           json += cfg.snoozeMin;
   json += ",\"manualOffMin\":";        json += cfg.manualOffMin;
@@ -313,12 +421,20 @@ void handleStatus() {
   json += ",\"h\":";                   json += nxt.h;
   json += ",\"m\":";                   json += nxt.m;
   json += ",\"inMin\":";               json += nxt.inMin;
+  json += ",\"lbl\":";                 appendJsonStr(json, nxt.label);
   json += "},\"alarms\":[";
-  for (int i = 0; i < 7; i++) {
-    if (i) json += ',';
-    json += "{\"en\":"; json += alarms[i].enabled ? 1 : 0;
-    json += ",\"h\":";  json += alarms[i].hour;
-    json += ",\"m\":";  json += alarms[i].minute;
+  bool first = true;
+  for (int i = 0; i < MAX_ALARMS; i++) {
+    if (!alarms[i].used) continue;
+    if (!first) json += ',';
+    first = false;
+    json += "{\"id\":";   json += i;
+    json += ",\"en\":";   json += alarms[i].enabled ? 1 : 0;
+    json += ",\"h\":";    json += alarms[i].hour;
+    json += ",\"m\":";    json += alarms[i].minute;
+    json += ",\"days\":"; json += alarms[i].daysMask;
+    json += ",\"snz\":";  json += alarms[i].snoozeEnabled ? 1 : 0;
+    json += ",\"lbl\":";  appendJsonStr(json, alarms[i].label);
     json += '}';
   }
   json += "]}";
@@ -336,7 +452,7 @@ void handlePanel() {
 
 void handleSnooze() {
   sendNoCache();
-  if (mode == Mode::Ringing) snoozeAlarm();
+  if (mode == Mode::Ringing && activeAlarmSnoozable) snoozeAlarm();
   server.send(200, "text/plain", "OK");
 }
 
@@ -367,19 +483,73 @@ void handleTime() {
   server.send(200, "text/plain", "OK");
 }
 
-void handleAlarms() {
+void handleAlarmSave() {
   sendNoCache();
-  for (int i = 0; i < 7; i++) {
-    String en = server.arg("en" + String(i));
-    String tm = server.arg("t" + String(i));  // "HH:MM"
-    if (tm.length() < 5) continue;
-    int h = tm.substring(0, 2).toInt();
-    int m = tm.substring(3, 5).toInt();
-    if (h < 0 || h > 23 || m < 0 || m > 59) continue;
-    alarms[i] = {en == "1", (uint8_t)h, (uint8_t)m};
+  int id = server.hasArg("id") ? server.arg("id").toInt() : -1;
+  int h  = server.hasArg("h") ? server.arg("h").toInt() : -1;
+  int m  = server.hasArg("m") ? server.arg("m").toInt() : -1;
+  if (h < 0 || h > 23 || m < 0 || m > 59) {
+    server.send(400, "text/plain", "Bad time");
+    return;
   }
+
+  if (id < 0) {
+    for (int i = 0; i < MAX_ALARMS; i++) {
+      if (!alarms[i].used) { id = i; break; }
+    }
+    if (id < 0) {
+      server.send(400, "text/plain", "Max 20 alarms");
+      return;
+    }
+  } else if (id >= MAX_ALARMS || !alarms[id].used) {
+    server.send(404, "text/plain", "Alarm not found");
+    return;
+  }
+
+  int days = constrain(server.arg("days").toInt(), 0, 127);
+  bool en  = !server.hasArg("en") || server.arg("en") == "1";
+  bool snz = !server.hasArg("snz") || server.arg("snz") == "1";
+  String lbl = server.arg("lbl");
+  lbl.trim();
+  if (lbl.length() == 0) lbl = "Alarm";
+
+  alarms[id].used = true;
+  alarms[id].enabled = en;
+  alarms[id].hour = (uint8_t)h;
+  alarms[id].minute = (uint8_t)m;
+  alarms[id].daysMask = (uint8_t)days;
+  alarms[id].snoozeEnabled = snz;
+  strlcpy(alarms[id].label, lbl.c_str(), ALARM_LABEL_LEN);
+
   saveAlarms();
-  Serial.println("[alarm] alarms saved");
+  Serial.printf("[alarm] saved #%d %02d:%02d days=0x%02X lbl=\"%s\"\n",
+                id, h, m, days, alarms[id].label);
+  server.send(200, "text/plain", "OK");
+}
+
+void handleAlarmToggle() {
+  sendNoCache();
+  int id = server.hasArg("id") ? server.arg("id").toInt() : -1;
+  if (id < 0 || id >= MAX_ALARMS || !alarms[id].used) {
+    server.send(404, "text/plain", "Alarm not found");
+    return;
+  }
+  alarms[id].enabled = (server.arg("en") == "1");
+  saveAlarms();
+  Serial.printf("[alarm] toggle #%d -> %s\n", id, alarms[id].enabled ? "ON" : "OFF");
+  server.send(200, "text/plain", "OK");
+}
+
+void handleAlarmDelete() {
+  sendNoCache();
+  int id = server.hasArg("id") ? server.arg("id").toInt() : -1;
+  if (id < 0 || id >= MAX_ALARMS || !alarms[id].used) {
+    server.send(404, "text/plain", "Alarm not found");
+    return;
+  }
+  alarms[id].used = false;
+  saveAlarms();
+  Serial.printf("[alarm] deleted #%d\n", id);
   server.send(200, "text/plain", "OK");
 }
 
@@ -453,9 +623,11 @@ void setup() {
   server.on("/api/panel",   HTTP_POST, handlePanel);
   server.on("/api/snooze",  HTTP_POST, handleSnooze);
   server.on("/api/dismiss", HTTP_POST, handleDismiss);
-  server.on("/api/time",    HTTP_POST, handleTime);
-  server.on("/api/alarms",   HTTP_POST, handleAlarms);
-  server.on("/api/settings", HTTP_POST, handleSettings);
+  server.on("/api/time",         HTTP_POST, handleTime);
+  server.on("/api/alarm/save",   HTTP_POST, handleAlarmSave);
+  server.on("/api/alarm/toggle", HTTP_POST, handleAlarmToggle);
+  server.on("/api/alarm/delete", HTTP_POST, handleAlarmDelete);
+  server.on("/api/settings",     HTTP_POST, handleSettings);
   server.onNotFound(handleNotFound);
   server.begin();
 }

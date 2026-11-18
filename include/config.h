@@ -22,3 +22,7 @@ constexpr uint16_t MAX_DURATION_MIN       = 180;  // max alarm / manual auto-off
 constexpr uint16_t MAX_SNOOZE_MIN         = 60;   // max snooze minutes
 constexpr uint32_t DOUBLE_PRESS_MS        = 500;  // window for a double press
 constexpr uint32_t DEBOUNCE_MS            = 30;
+
+// ---------------- Alarms ----------------
+constexpr uint8_t MAX_ALARMS      = 20;
+constexpr uint8_t ALARM_LABEL_LEN = 24;
