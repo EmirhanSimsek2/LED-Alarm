@@ -6,15 +6,16 @@ ESP32-C3 Super Mini based wake-up light. An LED panel above the bed is switched 
 
 ESP32 creates its own WiFi Access Point (`LED-Alarm`) with a captive portal at `http://192.168.4.1`.
 
-| Clock, Panel & Weekly Alarms | Quick Actions & Duration Settings |
-| :---: | :---: |
-| <img src="docs/ui-top.png" alt="LED Alarm Web UI - Top" width="270"> | <img src="docs/ui-bottom.png" alt="LED Alarm Web UI - Bottom" width="270"> |
+| Clock, Panel & Alarms | Add / Edit Alarm | Alarms & Settings |
+| :---: | :---: | :---: |
+| <img src="docs/ui-top.jpg" alt="LED Alarm Web UI - Top" width="230"> | <img src="docs/ui-modal.png" alt="LED Alarm Web UI - Add Alarm" width="230"> | <img src="docs/ui-bottom.jpg" alt="LED Alarm Web UI - Settings" width="230"> |
 
 ## Features
 
-- **Weekly Schedule:** Separate enable toggle and time for each day of the week, saved in flash (`Preferences`).
-- **Quick Actions:** One-tap **Copy Mon → Fri** and **Disable all** buttons.
-- **Next Alarm Preview:** Shows the upcoming alarm day, time, and remaining time (`Today` / `Tomorrow` / weekday).
+- **Multi-Alarm Schedule (up to 20):** Create multiple independent alarms for any day—including multiple alarms on the same day—saved in flash (`Preferences`).
+- **iOS-Style Customization:** Configure each alarm with a **label**, **repeat days** (`Once`, `Weekdays`, `Weekends`, `Every day`, or custom `M–S` selection), and per-alarm **Snooze** toggle. One-shot (`Once`) alarms automatically disable after firing.
+- **Instant Control:** Toggle alarms on/off directly from the list, or tap **Edit** to delete alarms.
+- **Next Alarm Preview:** Shows the upcoming alarm day, time, label, and remaining time (`Today` / `Tomorrow` / weekday).
 - **Configurable Durations (saved in flash):**
   - **Alarm duration** (`0–180 min`, default `3 min`, `0 = manual off`)
   - **Snooze duration** (`1–60 min`, default `5 min`)
